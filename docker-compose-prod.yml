@@ -1,0 +1,64 @@
+version: '3'
+services:
+    laravel:
+        build:
+            context: ./
+            dockerfile: Dockerfile
+        ports:
+            - '${APP_PORT:-80}:80'
+            - 443:443
+        environment:
+            - LARAVEL_ENV=production
+            - LARAVEL_DB_PASSWORD=
+            - LARAVEL_DB_NAME=envault
+            - LARAVEL_DB_HOST=mysql
+            - LARAVEL_REDIS_HOST=redis
+            - LARAVEL_URL_HOSTNAME=192.168.192.128
+            - LARAVEL_URL_PROTOCOL=http
+        volumes:
+            - '.:/usr/share/nginx/envault/'
+            - './nginx/envault.conf:/etc/nginx/conf.d/default.conf'
+        networks:
+            - laravel
+        depends_on:
+            - mysql
+            - redis
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://127.0.0.0"]
+            interval: 10s
+            timeout: 15s
+            retries: 10
+        logging:
+            driver: "json-file"
+            options:
+                max-size: "1M"
+                max-file: "10"
+    mysql:
+        image: 'mysql:8.0'
+        ports:
+            - '${FORWARD_DB_PORT:-3306}:3306'
+        environment:
+            MYSQL_ROOT_PASSWORD: ''
+            MYSQL_DATABASE: 'envault'
+        volumes:
+            - 'laravelmysql:/var/lib/mysql'
+        networks:
+            - laravel
+    redis:
+        image: 'redis:alpine'
+        command: redis-server /etc/redis/redis.conf
+        ports:
+            - '${FORWARD_REDIS_PORT:-6379}:6379'
+        volumes:
+            - './redis/redis.conf:/etc/redis/redis.conf'
+            - 'laravelredis:/data'
+        networks:
+            - laravel
+networks:
+    laravel:
+        driver: bridge
+volumes:
+    laravelmysql:
+        driver: local
+    laravelredis:
+        driver: local
