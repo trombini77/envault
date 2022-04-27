@@ -127,9 +127,11 @@ chmod -R ug+rwx ${LARAVEL_ROOT}/storage ${LARAVEL_ROOT}/bootstrap/cache
 # END Fix Laravel Permissions Script
 
 # Check if crontab is set
+echo "### CHECK CRON"
 if ! crontab -l | grep -q "certbot renew";
 then
     (crontab -l ; echo "0 0 1 * * certbot renew --post-hook \"service nginx reload\"") | crontab -
+    echo "# ADDED NEW CRON"
 fi
 
 # Check if domain is set
@@ -151,8 +153,19 @@ then
     service php7.4-fpm start && service nginx start && ps auxw
 else
     echo "# Start with domain"
-
-    service php7.4-fpm start && service nginx start && certbot --nginx -d $1 -m $2 --agree-tos --no-eff-email --non-interactive && service nginx reload && ps auxw
+    sed -i "s/listen 443 ssl;/listen 443;/" /etc/nginx/conf.d/default.conf
+    sed -i "s/listen [::]:443 ssl;/listen [::]:443;/" /etc/nginx/conf.d/default.conf
+    sed -i "s/ssl_certificate=.*/#ssl_certificate=/" /etc/nginx/conf.d/default.conf
+    sed -i "s/ssl_certificate_key=.*/#ssl_certificate_key=/" /etc/nginx/conf.d/default.conf
+    echo "# Start NGINX and PHP-FPM Services"
+    service php7.4-fpm start && service nginx start
+    echo "# Check CERTBOT"
+    certbot --nginx -d $LARAVEL_URL_HOSTNAME -m $CERTBOT_EMAIL --agree-tos --no-eff-email --non-interactive && service nginx reload && ps auxw
+    sed -i "s/listen 443;/listen 443 ssl;/" /etc/nginx/conf.d/default.conf
+    sed -i "s/listen [::]:443;/listen [::]:443 ssl;/" /etc/nginx/conf.d/default.conf
+    sed -i "s/#ssl_certificate=.*/ssl_certificate=\/etc\/letsencrypt\/$LARAVEL_URL_HOSTNAME\/fullchain.pem;/" /etc/nginx/conf.d/default.conf
+    sed -i "s/#ssl_certificate_key=.*/ssl_certificate_key=\/etc\/letsencrypt\/$LARAVEL_URL_HOSTNAME\/privkey.pem;" /etc/nginx/conf.d/default.conf
+    service nginx reload
 fi
 
 echo "### END STARTUP SCRIPT"

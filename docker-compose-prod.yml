@@ -7,24 +7,28 @@ services:
         ports:
             - '${APP_PORT:-80}:80'
             - 443:443
-        environment:
             - LARAVEL_ENV=production
             - LARAVEL_DB_PASSWORD=
             - LARAVEL_DB_NAME=envault
             - LARAVEL_DB_HOST=mysql
             - LARAVEL_REDIS_HOST=redis
-            - LARAVEL_URL_HOSTNAME=192.168.192.128
-            - LARAVEL_URL_PROTOCOL=http
+            - LARAVEL_REDIS_PASSWORD=
+            - LARAVEL_URL_HOSTNAME=dominio.com.br
+            - LARAVEL_URL_PROTOCOL=htpps
+            - LARAVEL_URL_ENV=internet
+            - CERTBOT_EMAIL=
+            - NGINX_CONF=/etc/nginx/conf.d/envault.conf
         volumes:
             - '.:/usr/share/nginx/envault/'
-            - './nginx/envault.conf:/etc/nginx/conf.d/default.conf'
+            - './nginx/:/etc/nginx/conf.d/'
+            - './letsencrypt/:/etc/letsencrypt/'
         networks:
             - laravel
         depends_on:
             - mysql
             - redis
         healthcheck:
-            test: ["CMD", "curl", "-f", "http://127.0.0.0"]
+            test: ["CMD", "curl", "-f", "http://localhost"]
             interval: 10s
             timeout: 15s
             retries: 10
@@ -34,12 +38,12 @@ services:
                 max-size: "1M"
                 max-file: "10"
     mysql:
-        image: 'mysql:8.0'
+        image: 'mariadb:10.7''
         ports:
             - '${FORWARD_DB_PORT:-3306}:3306'
         environment:
-            MYSQL_ROOT_PASSWORD: ''
-            MYSQL_DATABASE: 'envault'
+            MARIADB_ROOT_PASSWORD: ''
+            MARIADB_DATABASE: 'envault'
         volumes:
             - 'laravelmysql:/var/lib/mysql'
         networks:
